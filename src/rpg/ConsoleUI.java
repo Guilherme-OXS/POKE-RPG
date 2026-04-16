@@ -1,14 +1,40 @@
 package rpg;
 
 import java.util.Scanner;
+import java.util.InputMismatchException;
+import java.util.NoSuchElementException;
 
+/**
+ * Classe utilitária responsável pela interface do usuário no console.
+ * 
+ * Fornece métodos para:
+ * - Limpar a tela do console (cross-platform)
+ * - Desenhar caixas e bordas decorativas
+ * - Exibir menus interativos
+ * - Renderizar telas de combate com HUD e sprites
+ * - Gerenciar entrada do usuário
+ * - Exibir animações e efeitos visuais
+ * - Mostrar logos e mensagens de boas-vindas
+ * 
+ * Toda interação visual do jogo passa por essa classe.
+ * 
+ * @author Projeto Integrador RPG
+ * @see Animacoes
+ * @see ANSIColors
+ */
 public class ConsoleUI {
     private static final Scanner scanner = new Scanner(System.in);
     private static final int BARRA_HP_LARGURA = 20;
-
+    /** Largura padrão das caixas de diálogo */
     public static final int CAIXA_LARGURA = 58;
 
-    public static void clearScreen() {
+    /**
+     * Limpa a tela do console de forma cross-platform.
+     * - Windows: usa comando "cls"
+     * - Linux/Mac: usa caracteres de escape ANSI
+     * - Fallback: imprime 50 linhas vazias
+     */
+    public static void limparTela() {
         try {
             if (System.getProperty("os.name").toLowerCase().contains("windows")) {
                 new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
@@ -23,27 +49,36 @@ public class ConsoleUI {
         }
     }
 
-    public static void limparTela() {
-        clearScreen();
-    }
 
-    public static String centralizarTexto(String texto, int largura) {
-        return centerText(texto, largura);
-    }
-
-    public static void animarTexto(String texto, int delayMillis) {
-        for (char c : texto.toCharArray()) {
-            System.out.print(c);
-            System.out.flush();
-            pause(delayMillis);
-        }
-        System.out.println();
-    }
-
+    /**
+     * Desenha uma caixa decorativa com bordas e conteúdo.
+     * Versão simplificada que usa cor branca padrão.
+     * 
+     * @param titulo Título da caixa (opcional)
+     * @param conteudo Array de strings para exibir na caixa
+     * @param largura Largura total da caixa
+     * @see #desenharCaixa(String, String[], int, String)
+     */
     public static void desenharCaixa(String titulo, String[] conteudo, int largura) {
         desenharCaixa(titulo, conteudo, largura, ANSIColors.WHITE);
     }
 
+    /**
+     * Desenha uma caixa decorativa com bordas, conteúdo e cor customizável.
+     * 
+     * Exemplo de caixa:
+     * ┌────────────────────┐
+     * │   Título da Caixa  │
+     * ├────────────────────┤
+     * │  Linha de conteúdo │
+     * │  Outra linha       │
+     * └────────────────────┘
+     * 
+     * @param titulo Título da caixa (pode ser null)
+     * @param conteudo Array de strings para exibir
+     * @param largura Largura total da caixa
+     * @param cor Código ANSI de cor para as bordas
+     */
     public static void desenharCaixa(String titulo, String[] conteudo, int largura, String cor) {
         String borda = repeat('─', largura);
         String estilo = cor == null ? "" : cor + ANSIColors.BOLD;
@@ -51,11 +86,11 @@ public class ConsoleUI {
 
         System.out.println(estilo + "┌" + borda + "┐" + reset);
         if (titulo != null && !titulo.isEmpty()) {
-            System.out.println(estilo + "│" + centralizarTexto(titulo, largura) + "│" + reset);
+            System.out.println(estilo + "│" + centerText(titulo, largura) + "│" + reset);
             System.out.println(estilo + "├" + borda + "┤" + reset);
         }
         for (String linha : conteudo) {
-            System.out.println(estilo + "│" + centralizarTexto(linha, largura) + "│" + reset);
+            System.out.println(estilo + "│" + centerText(linha, largura) + "│" + reset);
         }
         System.out.println(estilo + "└" + borda + "┘" + reset);
     }
@@ -89,7 +124,7 @@ public class ConsoleUI {
         String[] linhas = {"Bem-vindo ao", "RPG Clássico", "Sua aventura começa agora."};
         desenharCaixa("BEM-VINDO", linhas, CAIXA_LARGURA, ANSIColors.YELLOW);
         System.out.println();
-        animarTexto(ANSIColors.WHITE + "Prepare-se para a jornada..." + ANSIColors.RESET, 40);
+        Animacoes.typeWriter(ANSIColors.WHITE + "Prepare-se para a jornada..." + ANSIColors.RESET, 40);
         pause(Animacoes.DELAY_MEDIO);
     }
 
@@ -111,10 +146,29 @@ public class ConsoleUI {
     }
 
 
+    /**
+     * Exibe um menu com opções padrão.
+     * Alias para mostrarMenu(titulo, opcoes) com título padrão.
+     * 
+     * @param opcoes Array de strings representando as opções
+     */
     public static void mostrarMenu(String[] opcoes) {
         mostrarMenu("Selecione uma ação:", opcoes);
     }
 
+    /**
+     * Exibe um menu customizável com título.
+     * Cada opção é numerada de 1 em diante, colorida em amarelo.
+     * 
+     * Exemplo de saída:
+     * Escolha sua classe:
+     * 1 - Guerreiro
+     * 2 - Mago
+     * 3 - Arqueiro
+     * 
+     * @param titulo O título do menu a exibir
+     * @param opcoes Array de strings com as opções disponíveis
+     */
     public static void mostrarMenu(String titulo, String[] opcoes) {
         System.out.println(ANSIColors.WHITE + titulo + ANSIColors.RESET);
         for (int i = 0; i < opcoes.length; i++) {
@@ -122,6 +176,20 @@ public class ConsoleUI {
         }
     }
 
+    /**
+     * Lê a opção do usuário com validação.
+     * Repete solicitação até opção válida ser digitada.
+     * Valida que número está entre 1 e quantidade.
+     * Retorna índice 0-baseado (opção 1 = índice 0).
+     * 
+     * Tratamento de exceção:
+     * - InputMismatchException: usuário digita não-número
+     * - Limpa buffer de entrada
+     * - Pede entrada novamente
+     * 
+     * @param quantidade Número de opções válidas
+     * @return Índice da opção escolhida (0-baseado)
+     */
     public static int lerOpcao(int quantidade) {
         while (true) {
             System.out.print(ANSIColors.WHITE + "Digite o número da opção e pressione ENTER: " + ANSIColors.RESET);
@@ -131,13 +199,34 @@ public class ConsoleUI {
                 if (escolha >= 1 && escolha <= quantidade) {
                     return escolha - 1;
                 }
-            } catch (Exception e) {
-                scanner.nextLine();
+                // Se fora do range, pede novamente
+                System.out.println(ANSIColors.RED + "Opção inválida. Digite entre 1 e " + quantidade + "." + ANSIColors.RESET);
+            } catch (InputMismatchException e) {
+                // Usuário digitou não-número
+                scanner.nextLine();  // Limpa buffer
+                System.out.println(ANSIColors.RED + "Entrada inválida. Digite um número válido." + ANSIColors.RESET);
             }
-            System.out.println(ANSIColors.RED + "Entrada inválida. Digite um número válido." + ANSIColors.RESET);
         }
     }
 
+    /**
+     * Renderiza a tela completa de combate com HUD e sprites.
+     * 
+     * Layout da tela:
+     * - Título da fase no topo
+     * - HUD do inimigo (nome, nível, vida)
+     * - Sprite ASCII do inimigo
+     * - Sprite ASCII do jogador
+     * - HUD do jogador (nome, XP, ouro, vida, energia)
+     * - Diálogo/mensagem de ação
+     * 
+     * @param jogador Personagem jogador
+     * @param inimigo Inimigo em combate
+     * @param inimigoSprite Array de strings com sprite do inimigo
+     * @param jogadorSprite Array de strings com sprite do jogador
+     * @param titulo Título da fase (ex: "Fase 1")
+     * @param dialogo Mensagem de ação ou diálogo
+     */
     public static void renderTela(PersonagemBase jogador, Inimigo inimigo, String[] inimigoSprite, String[] jogadorSprite, String titulo, String dialogo) {
         limparTela();
         if (titulo != null && !titulo.isEmpty()) {
@@ -188,10 +277,21 @@ public class ConsoleUI {
         desenharCaixa(null, new String[]{dialogo}, CAIXA_LARGURA, ANSIColors.WHITE);
     }
 
+    /**
+     * Exibe um efeito de texto com cor e negrito.
+     * Usado para mensagens de ação e eventos importantes.
+     * 
+     * @param efeito Mensagem a exibir
+     * @param cor Código ANSI da cor desejada
+     */
     public static void printEffect(String efeito, String cor) {
         System.out.println(cor + ANSIColors.BOLD + efeito + ANSIColors.RESET);
     }
 
+    /**
+     * Pausa a execução e aguarda o usuário pressionar ENTER.
+     * Utilizado para pautaçõesou transições entre telas.
+     */
     public static void pressEnterToContinue() {
         System.out.print(ANSIColors.WHITE + "Pressione ENTER para continuar..." + ANSIColors.RESET);
         try {
@@ -200,13 +300,32 @@ public class ConsoleUI {
         }
     }
 
+    /**
+     * Lê um texto digitado pelo usuário com prompt customizável.
+     * Se entrada ficar vazia, retorna "Herói" como padrão.
+     * Limpa o buffer de entrada antes de ler para evitar conflitos.
+     * 
+     * Tratamento de exceptão:
+     * - Exceções gerais retornam "Herói"
+     * - Remove espaços em branco das extremidades
+     * 
+     * @param prompt Mensagem a exibir antes de ler (ex: "Digite seu nome: ")
+     * @return Texto digitado pelo usuário ou "Herói" se vazio/erro
+     */
     public static String lerTexto(String prompt) {
         flushInputBuffer();
         System.out.print(ANSIColors.WHITE + prompt + ANSIColors.RESET);
         try {
             String valor = scanner.nextLine().trim();
             return valor.isEmpty() ? "Herói" : valor;
+        } catch (NoSuchElementException e) {
+            // Scanner esgotado (EOF)
+            return "Herói";
+        } catch (IllegalStateException e) {
+            // Scanner foi fechado
+            return "Herói";
         } catch (Exception e) {
+            // Qualquer outra exceção
             return "Herói";
         }
     }
