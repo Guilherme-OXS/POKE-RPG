@@ -80,7 +80,7 @@ public class Main {
         try {
             scanner.nextLine();
         } catch (Exception e) {
-            // Em caso de qualquer falha de entrada, evita quebrar o fluxo narrativo.
+            // Em caso de falha de entrada, evita quebrar o fluxo narrativo.
         } finally {
             System.out.flush();
         }
