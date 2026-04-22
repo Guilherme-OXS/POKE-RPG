@@ -69,7 +69,7 @@ public class Goblin extends PersonagemBase implements HabilidadeEspecial, Recupe
     public String recuperar() {
         curarVida(8);
         recuperarEnergia(22);
-        return getNome() + " sumiu nas sombras e voltou pronto para lutar.";
+        return getNome() + " reapareceu das sombras com folego renovado.";
     }
 
     @Override

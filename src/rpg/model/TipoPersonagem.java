@@ -7,6 +7,7 @@ public enum TipoPersonagem {
     ORC,
     GOBLIN,
     DRAGAO,
+    GOKU,
     CHEFE_IA,
     CHEFE_PROVA,
     CHEFE_MELANCIA,

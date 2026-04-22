@@ -2,6 +2,7 @@ package rpg.engine;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.ThreadLocalRandom;
@@ -11,11 +12,16 @@ import rpg.interfaces.Recuperavel;
 import rpg.model.PersonagemBase;
 import rpg.model.TipoPersonagem;
 import rpg.model.itens.Item;
+import rpg.model.inimigos.Goku;
 import rpg.utils.AsciiAnimation;
 import rpg.utils.AsciiAnimation.TipoAcaoAnimada;
 import rpg.utils.ConsoleUI;
 
 public class Combate {
+    private static final int CHANCE_EVENTO_GOKU = 1;
+    private static boolean eventoGokuJaUsado = false;
+    private static final int LIMITE_HISTORICO_VISUAL = 6;
+
     private static final String[] MENU_TURNO = {
             "1. Atacar",
             "2. Defender (50% menos dano no proximo golpe)",
@@ -26,12 +32,14 @@ public class Combate {
 
     private final Scanner scanner;
     private final ArrayList<String> historicoAcoes;
+    private final HashSet<String> narrativasJaExibidas;
     private final String[] ultimasAcoes;
     private int indiceCircular;
 
     public Combate(Scanner scanner) {
         this.scanner = scanner;
         this.historicoAcoes = new ArrayList<>();
+        this.narrativasJaExibidas = new HashSet<>();
         this.ultimasAcoes = new String[6];
         this.indiceCircular = 0;
     }
@@ -41,38 +49,240 @@ public class Combate {
     }
 
     public boolean iniciar(PersonagemBase heroi, PersonagemBase inimigo) {
-        registrarAcao("Um novo duelo comecou: " + heroi.getNome() + " vs " + inimigo.getNome());
+        PersonagemBase inimigoAtual = inimigo;
         boolean turnoJogador = true;
+        boolean gokuJaInvocado = false;
+        boolean chanceMeioVerificada = false;
+        int turnosExecutados = 0;
 
-        while (heroi.estaVivo() && inimigo.estaVivo()) {
+        if (rolarEventoGoku()) {
+            inimigoAtual = invocarGokuNoInicio(inimigoAtual);
+            gokuJaInvocado = true;
+        }
+
+        registrarAcao("Um novo duelo comecou: " + heroi.getNome() + " vs " + inimigoAtual.getNome());
+
+        while (heroi.estaVivo() && inimigoAtual.estaVivo()) {
             ConsoleUI.limparTela();
             ConsoleUI.mostrarBannerPrincipal();
-            ConsoleUI.mostrarCampoBatalha(heroi, inimigo);
-            ConsoleUI.mostrarStatus(heroi, inimigo);
+            ConsoleUI.mostrarCampoBatalha(heroi, inimigoAtual);
+            ConsoleUI.mostrarStatus(heroi, inimigoAtual);
             ConsoleUI.mostrarHistorico(getUltimasAcoesOrdenadas());
 
             if (turnoJogador) {
-                executarTurnoJogador(heroi, inimigo);
+                executarTurnoJogador(heroi, inimigoAtual);
             } else {
-                executarTurnoInimigo(inimigo, heroi);
+                executarTurnoInimigo(inimigoAtual, heroi);
+            }
+
+            turnosExecutados++;
+
+            if (heroi.estaVivo() && inimigoAtual.estaVivo()) {
+                processarEventosDaBatalhaComGoku(heroi, inimigoAtual);
+            }
+
+            if (!gokuJaInvocado
+                    && !chanceMeioVerificada
+                    && turnosExecutados >= 2
+                    && heroi.estaVivo()
+                    && inimigoAtual.estaVivo()) {
+                chanceMeioVerificada = true;
+                if (rolarEventoGoku()) {
+                    inimigoAtual = invocarGokuNoMeio(inimigoAtual);
+                    gokuJaInvocado = true;
+                    turnoJogador = false;
+                    ConsoleUI.pausar(850);
+                    continue;
+                }
+            }
+
+            if (!gokuJaInvocado
+                    && heroi.estaVivo()
+                    && !inimigoAtual.estaVivo()
+                    && rolarEventoGoku()) {
+                inimigoAtual = invocarGokuNoFinal(inimigoAtual);
+                gokuJaInvocado = true;
+                turnoJogador = true;
+                ConsoleUI.pausar(900);
+                continue;
             }
 
             turnoJogador = !turnoJogador;
-            ConsoleUI.pausar(650);
+            ConsoleUI.pausar(850);
         }
 
         if (heroi.estaVivo()) {
-            registrarAcao("Vitoria! " + inimigo.getNome() + " foi derrotado.");
+            registrarAcao("Vitoria! " + inimigoAtual.getNome() + " foi derrotado.");
         } else {
             registrarAcao("Derrota... " + heroi.getNome() + " caiu em combate.");
         }
 
         ConsoleUI.limparTela();
         ConsoleUI.mostrarBannerPrincipal();
-        ConsoleUI.mostrarStatus(heroi, inimigo);
+        ConsoleUI.mostrarStatus(heroi, inimigoAtual);
         ConsoleUI.mostrarHistorico(getUltimasAcoesOrdenadas());
         ConsoleUI.pausar(1300);
         return heroi.estaVivo();
+    }
+
+    private boolean rolarEventoGoku() {
+        if (eventoGokuJaUsado) {
+            return false;
+        }
+
+        boolean apareceu = ThreadLocalRandom.current().nextInt(100) < CHANCE_EVENTO_GOKU;
+        if (apareceu) {
+            eventoGokuJaUsado = true;
+        }
+        return apareceu;
+    }
+
+    private void exibirHistoriaAparicaoGoku(String momento, String nomeInimigo) {
+        String inimigo = nomeInimigo == null || nomeInimigo.trim().isEmpty() ? "o inimigo" : nomeInimigo;
+
+        ConsoleUI.limparTela();
+        ConsoleUI.mostrarBannerPrincipal();
+        ConsoleUI.mensagemAlerta("FENOMENO RARO (1%): uma ruptura de KI rasgou a arena.");
+        ConsoleUI.mensagemInfo("Momento da anomalia: " + momento + ".");
+        ConsoleUI.mensagemInfo("As correntes da dungeon tremem e o ar perde peso.");
+        ConsoleUI.mensagemInfo("Isso pode acontecer em qualquer historia, em qualquer rota.");
+        ConsoleUI.mensagemInfo("Nem " + inimigo + " consegue ignorar essa presenca.");
+        ConsoleUI.mensagemErro("Goku Instinto Supremo atravessou a fenda e exigiu o duelo.");
+        ConsoleUI.pausar(1400);
+    }
+
+    private PersonagemBase invocarGokuNoInicio(PersonagemBase inimigoOriginal) {
+        String nomeInimigo = inimigoOriginal == null ? "o inimigo" : inimigoOriginal.getNome();
+        exibirHistoriaAparicaoGoku("inicio da luta", nomeInimigo);
+        ConsoleUI.mensagemAlerta("ALERTA DE KI: presenca desconhecida detectada.");
+        ConsoleUI.mensagemErro("Goku apareceu antes da luta e tomou o lugar de " + nomeInimigo + ".");
+        registrarAcao("Evento raro (1%): Goku invadiu o inicio do combate.");
+        Goku goku = new Goku();
+        ConsoleUI.mensagemInfo("Forma inicial detectada: " + goku.getNomeFormaAtual() + ".");
+        return goku;
+    }
+
+    private PersonagemBase invocarGokuNoMeio(PersonagemBase inimigoAtual) {
+        String nomeInimigo = inimigoAtual == null ? "o inimigo" : inimigoAtual.getNome();
+        if (inimigoAtual != null && inimigoAtual.estaVivo()) {
+            inimigoAtual.setVidaAtual(0);
+        }
+
+        exibirHistoriaAparicaoGoku("meio da luta", nomeInimigo);
+        ConsoleUI.mensagemAlerta("RUPTURA DE COMBATE: energia esmagadora em aproximacao.");
+        ConsoleUI.mensagemErro("Goku eliminou " + nomeInimigo + " e agora vai lutar com voce.");
+        registrarAcao("Evento raro (1%): Goku surgiu no meio da luta e derrotou o inimigo atual.");
+        Goku goku = new Goku();
+        ConsoleUI.mensagemInfo("Forma inicial detectada: " + goku.getNomeFormaAtual() + ".");
+        return goku;
+    }
+
+    private PersonagemBase invocarGokuNoFinal(PersonagemBase inimigoDerrotado) {
+        String nomeInimigo = inimigoDerrotado == null ? "o inimigo" : inimigoDerrotado.getNome();
+        exibirHistoriaAparicaoGoku("fim da luta", nomeInimigo);
+        ConsoleUI.mensagemAlerta("VOCE MAL RESPIRA... e outra presenca aparece.");
+        ConsoleUI.mensagemErro("Apos a queda de " + nomeInimigo + ", Goku entrou na arena para um novo duelo.");
+        registrarAcao("Evento raro (1%): Goku apareceu no final do combate.");
+        Goku goku = new Goku();
+        ConsoleUI.mensagemInfo("Forma inicial detectada: " + goku.getNomeFormaAtual() + ".");
+        return goku;
+    }
+
+    private void processarEventosDaBatalhaComGoku(PersonagemBase heroi, PersonagemBase inimigoAtual) {
+        if (!(inimigoAtual instanceof Goku)) {
+            processarNarrativaDeOutrosInimigos(heroi, inimigoAtual);
+            return;
+        }
+
+        Goku goku = (Goku) inimigoAtual;
+        processarTransformacaoDoGoku(heroi, goku);
+        processarNarrativaDePressao(goku, heroi);
+    }
+
+    private void processarNarrativaDeOutrosInimigos(PersonagemBase heroi, PersonagemBase inimigoAtual) {
+        List<String> eventosNarrativos = new ArrayList<String>();
+        double vidaHeroi = heroi.getPercentualVida();
+        double vidaInimigo = inimigoAtual.getPercentualVida();
+        String nomeInimigo = inimigoAtual.getNome();
+
+        if (inimigoAtual.getTipo() == TipoPersonagem.GOBLIN) {
+            if (vidaInimigo <= 80.0) {
+                eventosNarrativos.add(nomeInimigo + " ri com maldade: mesmo ferido, ele procura uma brecha na sua guarda.");
+            }
+            if (vidaHeroi <= 70.0) {
+                eventosNarrativos.add(nomeInimigo + " se move mais rapido que o olhar e tenta te cansar no erro.");
+            }
+            if (vidaInimigo <= 45.0) {
+                eventosNarrativos.add(nomeInimigo + " ja nao luta por bravura, mas por pura teimosia e medo de cair.");
+            }
+        } else if (inimigoAtual.getTipo() == TipoPersonagem.ORC) {
+            if (vidaInimigo <= 85.0) {
+                eventosNarrativos.add(nomeInimigo + " rosna alto. Quanto mais ferido, mais brutal fica seu ritmo de combate.");
+            }
+            if (vidaHeroi <= 60.0) {
+                eventosNarrativos.add("Cada golpe de " + nomeInimigo + " parece um martelo. O impacto faz o chao vibrar sob seus pes.");
+            }
+            if (vidaInimigo <= 40.0) {
+                eventosNarrativos.add("Mesmo sangrando, " + nomeInimigo + " avanca como se a dor apenas o alimentasse.");
+            }
+        } else if (inimigoAtual.getTipo() == TipoPersonagem.DRAGAO) {
+            if (vidaInimigo <= 90.0) {
+                eventosNarrativos.add("As escamas de " + nomeInimigo + " queimam em vermelho. Ele prepara um sopro ainda mais agressivo.");
+            }
+            if (vidaHeroi <= 65.0) {
+                eventosNarrativos.add("O ar fica pesado. " + nomeInimigo + " pressiona voce como se quisesse dominar a arena inteira.");
+            }
+            if (vidaInimigo <= 35.0) {
+                eventosNarrativos.add(nomeInimigo + " muda o tom da luta: agora cada movimento dele parece uma ultima investida.");
+            }
+        } else if (inimigoAtual.getTipo() == TipoPersonagem.CHEFE_IA
+                || inimigoAtual.getTipo() == TipoPersonagem.CHEFE_PROVA
+                || inimigoAtual.getTipo() == TipoPersonagem.CHEFE_MELANCIA
+                || inimigoAtual.getTipo() == TipoPersonagem.CHEFE_VERDADE
+                || inimigoAtual.getTipo() == TipoPersonagem.CHEFE_TROMPETE
+                || inimigoAtual.getTipo() == TipoPersonagem.CHEFE_REI_DEMONIO) {
+            if (vidaInimigo <= 85.0) {
+                eventosNarrativos.add(nomeInimigo + " ajusta a postura. Ele percebe que o duelo deixou de ser simples.");
+            }
+            if (vidaHeroi <= 55.0) {
+                eventosNarrativos.add("A presenca de " + nomeInimigo + " pesa no ar. O combate vira uma prova de resistencia mental.");
+            }
+            if (vidaInimigo <= 35.0) {
+                eventosNarrativos.add(nomeInimigo + " esta encurralado, mas isso o torna ainda mais perigoso do que antes.");
+            }
+        }
+
+        for (String evento : eventosNarrativos) {
+            registrarNarrativa(evento);
+            ConsoleUI.mensagemInfo(evento);
+            ConsoleUI.pausar(850);
+        }
+    }
+
+    private void processarTransformacaoDoGoku(PersonagemBase heroi, Goku goku) {
+        String mensagemEvolucao = goku.tentarEvoluir(heroi);
+        if (mensagemEvolucao == null) {
+            return;
+        }
+
+        registrarAcao(mensagemEvolucao);
+        ConsoleUI.mensagemAlerta(mensagemEvolucao);
+        ConsoleUI.mensagemInfo("Forma ativa de Goku: " + goku.getNomeFormaAtual() + ".");
+        if (goku.estaNaFormaFinal()) {
+            String avisoFinal = "Goku alcancou sua forma final nesta batalha.";
+            registrarAcao(avisoFinal);
+            ConsoleUI.mensagemErro(avisoFinal);
+        }
+        ConsoleUI.pausar(1100);
+    }
+
+    private void processarNarrativaDePressao(Goku goku, PersonagemBase heroi) {
+        List<String> eventosNarrativos = goku.coletarNarrativaDaBatalha(heroi);
+        for (String evento : eventosNarrativos) {
+            registrarNarrativa(evento);
+            ConsoleUI.mensagemInfo(evento);
+            ConsoleUI.pausar(900);
+        }
     }
 
     private void executarTurnoJogador(PersonagemBase heroi, PersonagemBase inimigo) {
@@ -274,6 +484,13 @@ public class Combate {
     }
 
     private double calcularMultiplicador(TipoPersonagem atacante, TipoPersonagem alvo) {
+        if (atacante == TipoPersonagem.GOKU && alvo != TipoPersonagem.GOKU) {
+            return 1.45;
+        }
+        if (atacante != TipoPersonagem.GOKU && alvo == TipoPersonagem.GOKU) {
+            return 0.75;
+        }
+
         if (atacante == TipoPersonagem.GUERREIRO && alvo == TipoPersonagem.GOBLIN) {
             return 1.25;
         }
@@ -324,6 +541,15 @@ public class Combate {
         indiceCircular = (indiceCircular + 1) % ultimasAcoes.length;
     }
 
+    private void registrarNarrativa(String mensagem) {
+        if (mensagem == null || mensagem.trim().isEmpty()) {
+            return;
+        }
+        if (narrativasJaExibidas.add(mensagem)) {
+            registrarAcao(mensagem);
+        }
+    }
+
     private int lerInteiro(String mensagem, int min, int max) {
         while (true) {
             System.out.print(mensagem);
@@ -345,13 +571,15 @@ public class Combate {
     }
 
     private String[] getUltimasAcoesOrdenadas() {
-        String[] ordenadas = new String[ultimasAcoes.length];
+        int limiteVisual = Math.min(LIMITE_HISTORICO_VISUAL, ultimasAcoes.length);
+        String[] ordenadas = new String[limiteVisual];
+        HashSet<String> vistos = new HashSet<String>();
         int posicao = 0;
 
-        for (int i = 0; i < ultimasAcoes.length; i++) {
+        for (int i = 0; i < ultimasAcoes.length && posicao < limiteVisual; i++) {
             int indice = (indiceCircular + i) % ultimasAcoes.length;
             String acao = ultimasAcoes[indice];
-            if (acao != null) {
+            if (acao != null && vistos.add(acao)) {
                 ordenadas[posicao] = acao;
                 posicao++;
             }

@@ -18,7 +18,7 @@ public final class ConsoleUI {
 
     private static final int LARGURA_COLUNA_ARTE = 36;
     private static final int TAMANHO_BARRA = 16;
-    private static final int LIMITE_HISTORICO = 3;
+    private static final int LIMITE_HISTORICO = 6;
 
     private ConsoleUI() {
     }
@@ -110,14 +110,11 @@ public final class ConsoleUI {
             return;
         }
 
-        StringBuilder sb = new StringBuilder();
+        System.out.println(GREEN + "Eventos recentes:" + RESET);
         for (int i = 0; i < eventos.size(); i++) {
-            if (i > 0) {
-                sb.append(" | ");
-            }
-            sb.append(eventos.get(i));
+            System.out.println(GREEN + " - " + RESET + eventos.get(i));
         }
-        System.out.println(GREEN + "Eventos: " + RESET + limitar(sb.toString(), 160));
+        mostrarSeparador();
     }
 
     public static void mostrarPainelAcoes(String titulo, String[] opcoes) {
@@ -193,16 +190,6 @@ public final class ConsoleUI {
         String parteCheia = repetir('=', preenchido);
         String parteVazia = repetir('.', TAMANHO_BARRA - preenchido);
         return "[" + corDaBarra + parteCheia + RESET + parteVazia + "]";
-    }
-
-    private static String limitar(String texto, int tamanho) {
-        if (texto == null) {
-            return "";
-        }
-        if (texto.length() <= tamanho) {
-            return texto;
-        }
-        return texto.substring(0, Math.max(0, tamanho - 3)) + "...";
     }
 
     private static String[] normalizarArte(String arte) {

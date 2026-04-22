@@ -209,6 +209,35 @@ public final class AsciiAnimation {
                     "  /________\\    \n"
     };
 
+    public static final String[] ANIMACAO_GOKU_ATAQUE = {
+            "      /^^\\      \n" +
+                    "     /_[]_\\     \n" +
+                    "    ( o_o )      \n" +
+                    "   /| 0  |\\     \n" +
+                    "  /_|_===|_\\    \n" +
+                    "    / | \\       \n" +
+                    "   /  |  \\      \n" +
+                    "  /___|___\\     \n",
+
+            "      /^^\\   ~~ \n" +
+                    "     /_[]_\\  ~~ \n" +
+                    "    ( >_< )      \n" +
+                    "   /| 0  |\\ ==> \n" +
+                    "  /_|_===|_\\    \n" +
+                    "    / | \\       \n" +
+                    "   /  |  \\      \n" +
+                    "  /___|___\\     \n",
+
+            "      /^^\\      \n" +
+                    "     /_[]_\\  *  \n" +
+                    "    ( >_< ) ***  \n" +
+                    "   /| 0  |\\===> \n" +
+                    "  /_|_===|_\\    \n" +
+                    "    / | \\       \n" +
+                    "   /  |  \\      \n" +
+                    "  /___|___\\     \n"
+    };
+
     public static final String[] ANIMACAO_CHEFE_IA = AnimacoesChefes.IA_SOBRECARGA;
     public static final String[] ANIMACAO_CHEFE_PROVA = AnimacoesChefes.PROVA_CORRECAO;
     public static final String[] ANIMACAO_CHEFE_MELANCIA = AnimacoesChefes.MELANCIA_IMPACTO;
@@ -326,6 +355,8 @@ public final class AsciiAnimation {
                 return ANIMACAO_GOBLIN_ATAQUE;
             case DRAGAO:
                 return ANIMACAO_DRAGAO_SOPRO;
+            case GOKU:
+                return ANIMACAO_GOKU_ATAQUE;
             case CHEFE_IA:
                 return ANIMACAO_CHEFE_IA;
             case CHEFE_PROVA:
@@ -357,6 +388,8 @@ public final class AsciiAnimation {
                 return gerarAnimacaoEfeito(ANIMACAO_GOBLIN_ATAQUE[2], "[ATAQUE SUJO]", "[GOLPE VELOZ]");
             case DRAGAO:
                 return ANIMACAO_DRAGAO_SOPRO;
+            case GOKU:
+                return gerarAnimacaoEfeito(ANIMACAO_GOKU_ATAQUE[2], "[KI SUPREMO]", "[KAMEHAMEHA ABSOLUTO]");
             case CHEFE_IA:
                 return ANIMACAO_CHEFE_IA;
             case CHEFE_PROVA:
@@ -584,6 +617,7 @@ public final class AsciiAnimation {
         return tipo == TipoPersonagem.ARQUEIRO
                 || tipo == TipoPersonagem.MAGO
                 || tipo == TipoPersonagem.DRAGAO
+                || tipo == TipoPersonagem.GOKU
                 || tipo == TipoPersonagem.CHEFE_IA
                 || tipo == TipoPersonagem.CHEFE_PROVA
                 || tipo == TipoPersonagem.CHEFE_VERDADE
@@ -594,6 +628,7 @@ public final class AsciiAnimation {
         return tipo == TipoPersonagem.ORC
                 || tipo == TipoPersonagem.GOBLIN
                 || tipo == TipoPersonagem.DRAGAO
+                || tipo == TipoPersonagem.GOKU
                 || tipo == TipoPersonagem.CHEFE_IA
                 || tipo == TipoPersonagem.CHEFE_PROVA
                 || tipo == TipoPersonagem.CHEFE_MELANCIA
@@ -613,6 +648,9 @@ public final class AsciiAnimation {
         }
         if (atacante == TipoPersonagem.DRAGAO) {
             return direcao > 0 ? "~~~~>" : "<~~~~";
+        }
+        if (atacante == TipoPersonagem.GOKU) {
+            return direcao > 0 ? ">>KI>>" : "<<IK<<";
         }
         if (atacante == TipoPersonagem.CHEFE_IA) {
             return direcao > 0 ? "1010>" : "<0101";
@@ -825,6 +863,8 @@ public final class AsciiAnimation {
                 return AsciiArt.GOBLIN;
             case DRAGAO:
                 return AsciiArt.DRAGAO;
+            case GOKU:
+                return AsciiArt.GOKU;
             case CHEFE_IA:
                 return AsciiArt.CHEFE_IA;
             case CHEFE_PROVA:

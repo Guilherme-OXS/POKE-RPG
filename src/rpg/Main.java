@@ -19,9 +19,9 @@ public class Main {
         try {
             iniciarJogo(scanner);
         } catch (Exception e) {
-            ConsoleUI.digitarTexto("Erro critico no jogo: " + e.getMessage(), 10);
+            ConsoleUI.digitarTexto("Erro critico no jogo: " + e.getMessage(), 20);
         } finally {
-            ConsoleUI.digitarTexto("Encerrando sessao do RPG...", 10);
+            ConsoleUI.digitarTexto("Encerrando sessao do RPG...", 20);
             scanner.close();
         }
     }
